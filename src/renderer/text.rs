@@ -3,7 +3,6 @@ use std::io::Write;
 
 use crate::{options::Options, renderer::Renderer};
 use midi_msg::{self, MidiMsg, ReceiverContext};
-use mopa::mopafy;
 
 use super::OnMidiInEvent;
 

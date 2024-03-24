@@ -3,7 +3,6 @@ use midir::{MidiInput, MidiInputConnection};
 use mopa::mopafy;
 use std::{
     collections::LinkedList,
-    io::Write,
     sync::{Arc, RwLock},
 };
 
@@ -58,5 +57,35 @@ impl MidiIn {
             midi_in_connection: None,
             on_event_instances: Arc::new(RwLock::new(LinkedList::<Box<dyn OnMidiInEvent>>::new())),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::midi_in::OnMidiInEvent;
+    use crate::MidiIn;
+    use crate::Options;
+
+    struct OnMidiInEventTest {}
+
+    impl OnMidiInEventTest {
+        fn new() -> Self {
+            OnMidiInEventTest {}
+        }
+    }
+
+    impl OnMidiInEvent for OnMidiInEventTest {
+        fn on_event(&mut self, stamp: u64, msg: &[u8]) {}
+    }
+
+    #[test]
+    fn add_on_event_instance() {
+        let opts: Options = Options {
+            renderer: "text".to_owned(),
+        };
+        let mut midi_in = MidiIn::new(&opts);
+        let i = OnMidiInEventTest::new();
+        midi_in.add_on_event_instance(Box::new(i));
+        assert_eq!(midi_in.on_event_instances.read().unwrap().len(), 1);
     }
 }
