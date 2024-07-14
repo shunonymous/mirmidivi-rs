@@ -1,40 +1,53 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-use std::io::Write;
+use std::{io::Write, thread};
 
-use crate::{options::Options, renderer::Renderer};
+use crate::{options::Options, renderer::Renderer, Message, TimeStamp};
+use crossbeam_channel::{select, Receiver, RecvError};
 use midi_msg::{self, MidiMsg, ReceiverContext};
 
-use super::OnMidiInEvent;
-
 /// Rendering as a text
-pub struct TextRenderer {
-    /// Text to displaying to console
-    message: String,
-}
+pub struct TextRenderer {}
 
-impl OnMidiInEvent for TextRenderer {
-    /// Executing process on MIDI event TextRenderer.
-    fn on_event(&mut self, stamp: u64, msg: &[u8]) {
+impl TextRenderer {
+    /// Output message to console.
+    fn draw(midi: &(TimeStamp, Message)) {
         let mut ctx = ReceiverContext::new();
-        self.message = format!(
+        let message = format!(
             "{:?}",
-            MidiMsg::from_midi_with_context(msg, &mut ctx).expect("Not an error")
+            MidiMsg::from_midi_with_context(midi.1.as_slice(), &mut ctx).expect("Not an error")
         );
-        self.draw()
+        print!("\r{}[K", 27 as char); // Carriege return, Erase to end of line.
+        print!("{}", message.trim_end());
+        std::io::stdout().flush().unwrap();
     }
 }
 
 impl Renderer for TextRenderer {
-    /// Output message to console.
-    fn draw(&self) {
-        print!("\r{}[K", 27 as char); // Carriege return, Erase to end of line.
-        print!("{}", self.message.trim_end());
-        std::io::stdout().flush().unwrap();
-    }
+    fn new(
+        _opts: &Options,
+        midi_recv: &Receiver<(TimeStamp, Message)>,
+        ctrlc: &Receiver<()>,
+    ) -> TextRenderer {
+        let midi_recv = midi_recv.clone();
+        let ctrlc = ctrlc.clone();
+        thread::spawn(move || loop {
+            select! {
+                recv(midi_recv) -> midi => {
+                    match midi {
+                        Ok(midi) => {
+                            Self::draw(&midi);
+                        },
+                        Err(RecvError) => {
+                            break;
+                        },
+                    }
+                }
+                recv(ctrlc) -> _ => {
+                    break;
+                }
+            }
+        });
 
-    fn new(_opts: &Options) -> TextRenderer {
-        TextRenderer {
-            message: String::new(),
-        }
+        TextRenderer {}
     }
 }
