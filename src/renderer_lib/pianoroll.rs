@@ -9,7 +9,7 @@ use std::{
 
 use time::Duration;
 
-use crossbeam_channel::{select, Receiver};
+use crossbeam_channel::{select, tick, Receiver};
 
 use crate::MidiData;
 use midi_msg::{Channel, ChannelVoiceMsg, MidiMsg};
@@ -108,6 +108,7 @@ impl RenderLib for PianoRoll {
     fn new(midi_recv: &Receiver<MidiData>, quit: Arc<AtomicBool>) -> Self {
         let pianoroll = Arc::new(RwLock::new(Vec::<Note>::new()));
         let midi_recv = midi_recv.clone();
+        let tick = tick(Duration::seconds(2).unsigned_abs());
 
         let p = pianoroll.clone();
         let handler = thread::spawn(move || loop {
@@ -122,6 +123,7 @@ impl RenderLib for PianoRoll {
                         }
                     }
                 },
+                recv(tick) -> _ => (),
             }
             if quit.load(SeqCst) {
                 break;

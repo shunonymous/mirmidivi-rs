@@ -100,7 +100,6 @@ impl Renderer for CursesRenderer {
         handlers: &mut Vec<JoinHandle<()>>,
     ) -> Self {
         let midi_recv = midi_recv.clone();
-        let ctrlc = quit.clone();
         handlers.push(thread::spawn(move || {
             let window = Self::init();
             let render_lib = PianoRoll::new(&midi_recv, quit.clone());
