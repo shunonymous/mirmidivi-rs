@@ -38,7 +38,48 @@ pub struct Atom {
 
 pub type Line = Vec<Atom>;
 
+pub struct DrawNote {
+    pub begin: i32,
+    pub end: i32,
+    pub channel: Channel,
+    pub note: u8,
+}
+
 impl PianoRoll {
+    pub fn get_draw_notes(
+        &self,
+        range_begin: Duration,
+        range_end: Duration,
+        sample_num: u32,
+    ) -> Vec<DrawNote> {
+        let mut notes = Vec::<DrawNote>::new();
+        let p = self.pianoroll.clone();
+        let pr = p.read().unwrap();
+
+        let target_notes = pr.iter().filter(|note| {
+            note.begin < range_end
+                || (match note.end {
+                    Some(note_end) => range_begin < note_end,
+                    None => true,
+                })
+        });
+
+        let sampling_timestamp = range_begin;
+        let interval = (range_end - range_begin) / sample_num;
+        target_notes.into_iter().for_each(|note| {
+            let end = note.end.unwrap_or(range_end);
+            let draw_note = DrawNote {
+                begin: ((note.begin - sampling_timestamp) / interval) as i32,
+                end: ((end - sampling_timestamp) / interval) as i32,
+                channel: note.channel,
+                note: note.note,
+            };
+            notes.push(draw_note);
+        });
+
+        notes
+    }
+
     pub fn draw(&self, range_begin: Duration, range_end: Duration, sample_num: u32) -> Vec<Line> {
         let mut buf = Vec::<Line>::new();
         let p = self.pianoroll.clone();
@@ -52,16 +93,16 @@ impl PianoRoll {
                 })
         });
 
-        let mut cur_timestamp = range_begin;
+        let mut sampling_timestamp = range_begin;
         let interval = (range_end - range_begin) / sample_num;
         for sample in 0..sample_num {
             let mut line: Line = vec![];
             target_notes
                 .clone()
                 .filter(|note| {
-                    note.begin < cur_timestamp
+                    note.begin < sampling_timestamp
                         && match note.end {
-                            Some(note_end) => cur_timestamp < note_end,
+                            Some(note_end) => sampling_timestamp < note_end,
                             None => true,
                         }
                 })
@@ -73,7 +114,7 @@ impl PianoRoll {
                     line.push(atom);
                 });
             buf.push(line);
-            cur_timestamp += interval;
+            sampling_timestamp += interval;
         }
 
         buf
