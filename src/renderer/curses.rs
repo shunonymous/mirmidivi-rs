@@ -103,9 +103,8 @@ impl Renderer for CursesRenderer {
         handlers.push(thread::spawn(move || {
             let window = Self::init();
             let render_lib = PianoRoll::new(&midi_recv, quit.clone());
-
-            // 10 fps
-            let tick = tick(Duration::milliseconds(100).unsigned_abs());
+            // 20 fps
+            let tick = tick(Duration::milliseconds(50).unsigned_abs());
 
             loop {
                 select! {
