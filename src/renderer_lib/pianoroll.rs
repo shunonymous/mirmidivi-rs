@@ -80,23 +80,26 @@ impl PianoRoll {
     }
 
     fn on_event(pianoroll: &mut Vec<Note>, midi: &MidiData) {
-        let (m, _) = MidiMsg::from_midi(midi.message.as_slice()).expect("Not an error");
+        let result = MidiMsg::from_midi(midi.message.as_slice());
 
-        match m {
-            MidiMsg::ChannelVoice { channel, msg } => match msg {
-                ChannelVoiceMsg::NoteOn { note, velocity } => pianoroll.push(Note {
-                    begin: midi.timestamp,
-                    end: None,
-                    channel,
-                    note,
-                    velocity,
-                }),
-                ChannelVoiceMsg::NoteOff { note, .. } => {
-                    pianoroll
-                        .iter_mut()
-                        .rfind(|n| (n.channel == channel && n.note == note))
-                        .map(|n| n.end = Some(midi.timestamp));
-                }
+        match result {
+            Ok(m) => match m.0 {
+                MidiMsg::ChannelVoice { channel, msg } => match msg {
+                    ChannelVoiceMsg::NoteOn { note, velocity } => pianoroll.push(Note {
+                        begin: midi.timestamp,
+                        end: None,
+                        channel,
+                        note,
+                        velocity,
+                    }),
+                    ChannelVoiceMsg::NoteOff { note, .. } => {
+                        pianoroll
+                            .iter_mut()
+                            .rfind(|n| (n.channel == channel && n.note == note))
+                            .map(|n| n.end = Some(midi.timestamp));
+                    }
+                    _ => (),
+                },
                 _ => (),
             },
             _ => (),
