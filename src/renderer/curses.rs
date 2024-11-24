@@ -76,17 +76,25 @@ impl CursesRenderer {
         let end = Duration::try_from(midi_in_epoch.elapsed()).unwrap();
         let begin = end - Duration::microseconds((term_size.x * usecs_per_line) as i64);
 
-        let buf = pianoroll.draw(begin, end, term_size.x as u32);
+        let draw_notes = pianoroll.get_draw_notes(begin, end, term_size.x as u32);
 
-        let mut x: i32 = 1;
         window.erase();
-        buf.iter().for_each(|line| {
-            line.iter().for_each(|atom| {
-                window.attrset(COLOR_PAIR(atom.channel as chtype + 1));
-                window.mvaddstr(term_size.y - atom.scale as i32, x, "|".to_owned());
-            });
-            x += 1;
+
+        draw_notes.iter().for_each(|note| {
+            if note.end > 0 {
+                window.attrset(COLOR_PAIR(note.channel as chtype));
+                let mut begin = note.begin;
+                if begin < 0 {
+                    begin = 0;
+                }
+                let y: i32 = ((term_size.y / 2) - note.note as i32 + 64) as i32;
+                let x: i32 = begin;
+                let length: usize = (note.end - begin) as usize;
+                let s: String = "|".repeat(length);
+                window.mvaddstr(y, x, s);
+            }
         });
+
         window.refresh();
     }
 }
