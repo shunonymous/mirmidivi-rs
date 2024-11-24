@@ -79,7 +79,7 @@ impl CursesRenderer {
         let buf = pianoroll.draw(begin, end, term_size.x as u32);
 
         let mut x: i32 = 1;
-        window.clear();
+        window.erase();
         buf.iter().for_each(|line| {
             line.iter().for_each(|atom| {
                 window.attrset(COLOR_PAIR(atom.channel as chtype + 1));
