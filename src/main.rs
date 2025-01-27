@@ -7,10 +7,14 @@ use std::thread::JoinHandle;
 
 use clap::Parser;
 use ctrlc;
-use midi_in::MidiIn;
+use midi::MidiProvider;
+use midi::{MidiIn, MidiPlayer};
 use options::Options;
+use renderer::curses::CursesRenderer;
+use renderer::text::TextRenderer;
+use renderer::Renderer;
 use time::Duration;
-mod midi_in;
+mod midi;
 mod options;
 mod renderer;
 mod renderer_lib;
@@ -23,6 +27,21 @@ struct MidiData {
     timestamp: Duration,
 }
 
+fn render_init<T: MidiProvider>(
+    opts: &Options,
+    midi: &T,
+    quit: Arc<AtomicBool>,
+    handlers: &mut Vec<JoinHandle<()>>,
+) {
+    if opts.renderer == "text" {
+        TextRenderer::init(opts, midi, quit, handlers);
+    } else if opts.renderer == "curses" {
+        CursesRenderer::init(opts, midi, quit, handlers);
+    } else {
+        panic!("{} is not implemented for renderer", opts.renderer);
+    }
+}
+
 fn main() {
     let opts: Options = Options::parse();
     let quit = Arc::new(AtomicBool::new(false));
@@ -31,16 +50,17 @@ fn main() {
     let _ = ctrlc::set_handler(move || {
         q.store(true, SeqCst);
     });
-    let mut midi_in: MidiIn = MidiIn::new(&opts);
-    let midi_recv = midi_in.connect();
-    let midi_in_epoch = midi_in.get_epoch();
-    renderer::render_init(
-        &opts,
-        &midi_recv,
-        midi_in_epoch,
-        quit.clone(),
-        &mut handlers,
-    );
+
+    match &opts.midifile {
+        Some(_) => {
+            let midi = MidiPlayer::new(&opts);
+            render_init(&opts, &midi, quit.clone(), &mut handlers);
+        }
+        None => {
+            let midi = MidiIn::new(&opts);
+            render_init(&opts, &midi, quit.clone(), &mut handlers);
+        }
+    };
 
     loop {
         if quit.load(SeqCst) {

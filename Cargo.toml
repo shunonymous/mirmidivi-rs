@@ -18,4 +18,5 @@ crossbeam-channel = "0.5.13"
 midi-msg = "0.7.3"
 mopa = "0.2.2"
 time = "0.3.36"
+nodi = "1.0.1"
 
