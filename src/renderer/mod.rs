@@ -8,6 +8,7 @@ use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::Instant;
 
+use crate::midi::MidiProvider;
 use crate::options::Options;
 use crate::MidiData;
 
@@ -18,8 +19,7 @@ mod text;
 pub trait Renderer: mopa::Any {
     fn init(
         opts: &Options,
-        midi_recv: &Receiver<MidiData>,
-        midi_in_epoch: Instant,
+        midi: &MidiProvider,
         quit: Arc<AtomicBool>,
         handlers: &mut Vec<JoinHandle<()>>,
     ) -> Self
@@ -30,14 +30,13 @@ mopafy!(Renderer);
 
 pub fn render_init(
     opts: &Options,
-    midi_recv: &Receiver<MidiData>,
-    midi_in_epoch: Instant,
+    midi: &MidiProvider,
     quit: Arc<AtomicBool>,
     handlers: &mut Vec<JoinHandle<()>>,
 ) {
     if opts.renderer == "text" {
-        TextRenderer::init(opts, midi_recv, midi_in_epoch, quit, handlers);
+        TextRenderer::init(opts, &midi, quit, handlers);
     } else if opts.renderer == "curses" {
-        CursesRenderer::init(opts, midi_recv, midi_in_epoch, quit, handlers);
+        CursesRenderer::init(opts, &midi, quit, handlers);
     }
 }

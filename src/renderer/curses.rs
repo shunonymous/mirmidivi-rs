@@ -2,6 +2,7 @@
 
 use super::Renderer;
 use crate::{
+    midi::MidiProvider,
     options::Options,
     renderer_lib::{pianoroll::PianoRoll, RenderLib},
     MidiData,
@@ -102,12 +103,12 @@ impl CursesRenderer {
 impl Renderer for CursesRenderer {
     fn init(
         _opts: &Options,
-        midi_recv: &Receiver<MidiData>,
-        midi_in_epoch: Instant,
+        midi: &MidiProvider,
         quit: Arc<AtomicBool>,
         handlers: &mut Vec<JoinHandle<()>>,
     ) -> Self {
-        let midi_recv = midi_recv.clone();
+        let midi_recv = midi.midi_in_recv.clone();
+        let epoch = midi.epoch;
         handlers.push(thread::spawn(move || {
             let window = Self::init();
             let render_lib = PianoRoll::new(&midi_recv, quit.clone());
@@ -117,7 +118,7 @@ impl Renderer for CursesRenderer {
             loop {
                 select! {
                     recv(tick) -> _ => {
-                        Self::draw_buffer(&window, &render_lib, &midi_in_epoch);
+                        Self::draw_buffer(&window, &render_lib, &epoch);
                     },
                 }
                 if quit.load(SeqCst) {

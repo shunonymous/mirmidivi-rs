@@ -7,10 +7,10 @@ use std::thread::JoinHandle;
 
 use clap::Parser;
 use ctrlc;
-use midi_in::MidiIn;
+use midi::MidiProvider;
 use options::Options;
 use time::Duration;
-mod midi_in;
+mod midi;
 mod options;
 mod renderer;
 mod renderer_lib;
@@ -31,16 +31,8 @@ fn main() {
     let _ = ctrlc::set_handler(move || {
         q.store(true, SeqCst);
     });
-    let mut midi_in: MidiIn = MidiIn::new(&opts);
-    let midi_recv = midi_in.connect();
-    let midi_in_epoch = midi_in.get_epoch();
-    renderer::render_init(
-        &opts,
-        &midi_recv,
-        midi_in_epoch,
-        quit.clone(),
-        &mut handlers,
-    );
+    let mut midi: MidiProvider = MidiProvider::new(&opts);
+    renderer::render_init(&opts, &midi, quit.clone(), &mut handlers);
 
     loop {
         if quit.load(SeqCst) {
